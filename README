@@ -1,0 +1,83 @@
+an emulator for the xteink-x4 device that uses the **ESP32-C3** microcontroller.
+
+Uses Espressif's QEMU fork to emulate the ESP32-C3 RISC-V CPU, memory, and SPI flash.
+Unsupported peripherals (e-ink display, SD card, ADC buttons) are stubbed via the
+CROSSPOINT_EMULATED build flag. Button input is mapped to keyboard over serial.
+
+## Prerequisites
+
+1. Install QEMU dependencies:
+   brew install libgcrypt glib pixman sdl2 libslirp
+
+2. Install Espressif QEMU (arm64 macOS):
+   mkdir -p ~/.espressif/tools/qemu-riscv32
+   cd ~/.espressif/tools/qemu-riscv32
+   curl -L -o qemu-riscv32.tar.xz \
+     "https://github.com/espressif/qemu/releases/download/esp-develop-9.2.2-20250817/qemu-riscv32-softmmu-esp_develop_9.2.2_20250817-aarch64-apple-darwin.tar.xz"
+   tar xf qemu-riscv32.tar.xz
+
+3. PlatformIO must be installed (used for building).
+
+## Quick Start
+
+   ./emulator/emu.sh              # Build + run with SDL display
+   ./emulator/emu.sh headless     # Build + run serial-only
+
+Or step by step:
+
+   cd crosspoint-reader
+   pio run -e emulated            # Build the emulated firmware
+   cd ..
+   ./emulator/build_flash_image.sh  # Create 16MB flash image
+   ./emulator/run_qemu.sh           # Launch QEMU (default: display mode)
+
+## Run Modes
+
+   ./emulator/run_qemu.sh display   # SDL window + serial (default)
+   ./emulator/run_qemu.sh headless  # Serial output only
+   ./emulator/run_qemu.sh gdb       # SDL window + GDB server on :1234
+
+## Button Input (serial)
+
+   h = Left    l = Right    k = Up      j = Down
+   c = Confirm b = Back     p = Power
+
+## QEMU Virtual Display
+
+To enable the QEMU SDL display window, add -DQEMU_DISPLAY=1 to the emulated
+build flags in platformio.ini and launch with: ./emulator/run_qemu.sh display
+
+The virtual display renders the 1-bit e-ink framebuffer as RGB565 in an SDL window.
+Note: The QEMU virtual framebuffer address (0x21000000) must be verified for your
+QEMU version. Without -DQEMU_DISPLAY=1, display output is serial-only.
+
+## What Works
+
+- ESP32-C3 CPU execution (RISC-V)
+- Memory (heap, stack, ESP.getFreeHeap())
+- SPI Flash (NVS, SPIFFS)
+- Serial output and logging
+- Boot sequence and activity system
+- GDB debugging (run_qemu.sh gdb)
+- Button input via keyboard over serial
+- Display framebuffer (in-memory, serial logging)
+
+## Limitations
+
+- No SD card: firmware boots to "SD card error" screen
+- No WiFi: network features unavailable
+- No real e-ink display rendering (no ghosting, partial refresh, etc.)
+- Timing differs from real hardware (-icount 3 = ~125MHz virtual clock)
+
+## Files
+
+   emulator/
+     emu.sh               - One-command build + flash + run
+     build_flash_image.sh  - Merge PlatformIO output into QEMU flash image
+     run_qemu.sh           - Launch QEMU with various modes
+     flash_image.bin       - Generated 16MB flash image (gitignored)
+
+   crosspoint-reader/
+     platformio.ini                  - [env:emulated] build environment
+     lib/hal/HalGPIO_emulated.cpp    - Keyboard input, stubbed battery/sleep
+     lib/hal/HalDisplay_emulated.cpp - In-memory framebuffer, QEMU RGB panel
