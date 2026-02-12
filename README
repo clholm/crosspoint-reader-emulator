@@ -64,7 +64,6 @@ QEMU version. Without -DQEMU_DISPLAY=1, display output is serial-only.
 
 ## Limitations
 
-- No SD card: firmware boots to "SD card error" screen
 - No WiFi: network features unavailable
 - No real e-ink display rendering (no ghosting, partial refresh, etc.)
 - Timing differs from real hardware (-icount 3 = ~125MHz virtual clock)
